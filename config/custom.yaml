@@ -20,6 +20,8 @@ llm:
 source:
   arxiv:
     category: ["cs.AI","cs.CV","cs.LG","cs.CL"]
+    include_keywords: null
+    exclude_keywords: null
 
 executor:
   debug: ${oc.env:DEBUG,null}
