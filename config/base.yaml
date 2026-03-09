@@ -6,6 +6,8 @@ zotero:
 source:
   arxiv:
     category: null # The categories of target arxiv papers. Find the abbr of your research area from [here](https://arxiv.org/category_taxonomy). Example: ["cs.AI","cs.CV","cs.LG","cs.CL"]
+    include_keywords: null # Keep arxiv papers whose title/abstract contains any of these keywords. Example: ["diffusion", "multimodal"]. If rules filter out all papers in one batch, category-only results are used as fallback.
+    exclude_keywords: null # Drop arxiv papers whose title/abstract contains any of these keywords. Example: ["survey", "benchmark"]
   biorxiv:
     category: null # The categories of target biorxiv papers. Find categories from [here](https://www.biorxiv.org/). Example: ["biochemistry","animal behavior and cognition"]
   medrxiv:

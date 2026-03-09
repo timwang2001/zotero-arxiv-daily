@@ -18,6 +18,8 @@ class ArxivRetriever(BaseRetriever):
     def _retrieve_raw_papers(self) -> list[ArxivResult]:
         client = arxiv.Client(num_retries=10,delay_seconds=10)
         query = '+'.join(self.config.source.arxiv.category)
+        include_keywords = self.config.source.arxiv.get("include_keywords")
+        exclude_keywords = self.config.source.arxiv.get("exclude_keywords")
         # Get the latest paper from arxiv rss feed
         feed = feedparser.parse(f"https://rss.arxiv.org/atom/{query}")
         if 'Feed error for query' in feed.feed.title:
@@ -33,6 +35,7 @@ class ArxivRetriever(BaseRetriever):
             search = arxiv.Search(id_list=all_paper_ids[i:i+20])
             batch = list(client.results(search))
             bar.update(len(batch))
+            batch = filter_papers_by_rules(batch, include_keywords, exclude_keywords)
             raw_papers.extend(batch)
         bar.close()
 
@@ -69,6 +72,44 @@ def extract_text_from_pdf(paper: ArxivResult) -> str | None:
             logger.warning(f"Failed to extract full text of {paper.title} from pdf: {e}")
             full_text = None
         return full_text
+
+
+
+def filter_papers_by_rules(
+    papers: list[ArxivResult],
+    include_keywords: list[str] | None,
+    exclude_keywords: list[str] | None,
+) -> list[ArxivResult]:
+    if not include_keywords and not exclude_keywords:
+        return papers
+
+    filtered = [
+        paper for paper in papers
+        if paper_matches_rules(paper, include_keywords, exclude_keywords)
+    ]
+    if len(filtered) == 0 and len(papers) > 0:
+        logger.warning(
+            "No arxiv papers left after include/exclude rules. "
+            "Fallback to category-only results for this batch."
+        )
+        return papers
+    return filtered
+
+def paper_matches_rules(
+    paper: ArxivResult,
+    include_keywords: list[str] | None,
+    exclude_keywords: list[str] | None,
+) -> bool:
+    normalized_text = f"{paper.title}\n{paper.summary}".lower()
+    if include_keywords:
+        include_keywords = [k.lower() for k in include_keywords]
+        if not any(keyword in normalized_text for keyword in include_keywords):
+            return False
+    if exclude_keywords:
+        exclude_keywords = [k.lower() for k in exclude_keywords]
+        if any(keyword in normalized_text for keyword in exclude_keywords):
+            return False
+    return True
 
 def extract_text_from_tar(paper: ArxivResult) -> str | None:
     with TemporaryDirectory() as temp_dir:
